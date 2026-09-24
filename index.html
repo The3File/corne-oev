@@ -70,6 +70,12 @@ main{max-width:960px;margin:0 auto;padding:28px 24px 40px;min-height:100%;displa
 .foot b{color:var(--ink-2);font-weight:500}
 .foot button{background:none;border:1px solid var(--line);color:var(--ink-3);border-radius:4px;padding:2px 8px;font:inherit;font-size:12px;cursor:pointer}
 .foot button:hover{color:var(--ink)}
+.foot .linjer{display:flex;flex-direction:column;gap:2px}
+.foot .idag{color:var(--accent-ink)}
+.stat{flex:1;display:flex;flex-direction:column;gap:14px}
+.stat[hidden],.quote-wrap[hidden]{display:none}
+.stat pre{margin:0;font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.6;color:var(--ink-2);white-space:pre;overflow-x:auto}
+.stat pre b{color:var(--ink);font-weight:500}
 </style>
 
 <main>
@@ -77,8 +83,8 @@ main{max-width:960px;margin:0 auto;padding:28px 24px 40px;min-height:100%;displa
     <div class="eyebrow">Corne · øvelse</div>
     <div class="opts">
       <label><input type="checkbox" id="o-hint"> Hint <kbd>Tab</kbd></label>
-      <label><input type="checkbox" id="o-fejl"> Hint ved fejl</label>
-      <label><input type="checkbox" id="o-bogst"> Kun bogstaver</label>
+      <label><input type="checkbox" id="o-fejl"> Hint ved fejl <kbd>^F</kbd></label>
+      <label><input type="checkbox" id="o-bogst"> Kun bogstaver <kbd>^L</kbd></label>
     </div>
   </div>
 
@@ -88,20 +94,27 @@ main{max-width:960px;margin:0 auto;padding:28px 24px 40px;min-height:100%;displa
     <div class="status" id="status"></div>
   </div>
 
+  <div class="stat" id="stat" hidden>
+    <div class="eyebrow">Corne · udvikling</div>
+    <pre id="stat-tekst"></pre>
+    <div class="author">en tast = tilbage til øvelsen</div>
+  </div>
+
   <div class="hint" id="hint" hidden>
     <div class="board-wrap"><div class="board" id="board"></div></div>
     <div class="cap" id="cap"></div>
   </div>
 
   <div class="foot">
-    <div id="stats"></div>
-    <div><span id="count"></span> · <kbd>Esc</kbd> ny tekst · <button id="reset">nulstil tal</button></div>
+    <div class="linjer"><div id="stats"></div><div class="idag" id="idag"></div></div>
+    <div><span id="count"></span> · <kbd>Esc</kbd> ny tekst · <button id="vis-stat">statistik <kbd>^S</kbd></button> <button id="reset">nulstil fejltal <kbd>^R</kbd></button></div>
   </div>
 </main>
 
 <script src="citater.js"></script>
 <script>
 // Citaterne ligger i citater.js (delt med oev.py).
+// Samme øvelse som oev.py: samme tabeller, taster, logbog og statistik. Ret begge.
 
 // ---------- Layoutet (filip-1) tegnet på Cornen. Kolonner yderst → inderst pr. hånd ----------
 // Blokken: 3 rækker x 5 kolonner pr. hånd. Skrevet venstre → højre som man læser.
@@ -121,7 +134,7 @@ const $ = id=>document.getElementById(id);
 const opts = {hint:$('o-hint'), fejl:$('o-fejl'), bogst:$('o-bogst')};
 let gem = {};
 try{ gem = JSON.parse(localStorage.getItem('corne-oev')||'{}'); }catch(e){ gem={}; }
-gem.fejl = gem.fejl||{}; gem.antal = gem.antal||0;
+gem.fejl = gem.fejl||{}; gem.antal = gem.antal||0; gem.log = gem.log||[];
 // standard: kun bogstaver til, hint fra
 opts.hint.checked   = gem.oHint ?? false;
 opts.fejl.checked   = gem.oFejl ?? false;
@@ -131,7 +144,7 @@ function gemNu(){
   try{ localStorage.setItem('corne-oev', JSON.stringify(gem)); }catch(e){}
 }
 
-let bunke=[], aktuel=null, tekst='', pos=0, fejlHer=0, start=null, faerdig=false, hintMidlertidig=false;
+let bunke=[], aktuel=null, tekst='', pos=0, fejlHer=0, start=null, slut=null, sidste=null, faerdig=false, hintMidlertidig=false, statVises=false;
 
 function normaliser(s){
   s = s.replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...');
@@ -147,7 +160,7 @@ function nyTekst(){
 }
 function genstart(){ // samme citat forfra (når "kun bogstaver" skifter, normaliseres teksten om)
   tekst = normaliser(aktuel[1]);
-  pos=0; fejlHer=0; start=null; faerdig=false; hintMidlertidig=false;
+  pos=0; fejlHer=0; start=null; slut=null; faerdig=false; hintMidlertidig=false;
   $('author').textContent = aktuel[0];
   const q=$('quote'); q.innerHTML='';
   for(const ch of tekst){ const s=document.createElement('span'); s.textContent=ch; q.appendChild(s); }
@@ -158,9 +171,9 @@ function render(){
   for(let i=0;i<spans.length;i++){ spans[i].className = i<pos?'ok':(i===pos?'cur':''); }
   const st=$('status');
   if(faerdig){
-    const sek=Math.round((Date.now()-start)/1000);
+    const sek=Math.round((slut-start)/1000);
     const rigtig=tekst.length, pct=Math.round(100*rigtig/(rigtig+fejlHer));
-    st.innerHTML=`<span class="done">færdig</span><span><b>${pct} %</b> rigtige</span><span><b>${fejlHer}</b> fejl</span><span><b>${sek}</b> sek</span><span>Enter = næste</span>`;
+    st.innerHTML=`<span class="done">færdig</span><span><b>${sidste?sidste.wpm:0}</b> wpm</span><span><b>${pct} %</b> rigtige</span><span><b>${fejlHer}</b> fejl</span><span><b>${sek}</b> sek</span><span>Enter = næste</span>`;
   } else {
     st.innerHTML=`<span><b>${pos}</b> / ${tekst.length}</span><span><b>${fejlHer}</b> fejl</span>`;
   }
@@ -171,6 +184,60 @@ function render(){
 function visStats(){
   const top=Object.entries(gem.fejl).sort((a,b)=>b[1]-a[1]).slice(0,6);
   $('stats').innerHTML = top.length ? 'Sværest for dig: '+top.map(([k,v])=>`<b>${k===' '?'mellemrum':k}</b> ${v}`).join(' · ') : 'Fejlene pr. tast samles her.';
+  // dagens tal og seneste dag før, som foden i oev.py
+  const dage=prDag(gem.log), idag=datoISO(new Date());
+  let linje = dage[idag] ? 'I dag: '+dagLinje(dage[idag]) : 'I dag: ingen tekster endnu';
+  const foer=Object.keys(dage).filter(d=>d<idag).sort().pop();
+  if(foer) linje += `   ·   sidst (${foer}): ${wpmAf(dage[foer])} wpm`;
+  $('idag').textContent = linje;
+}
+
+// ---------- Logbog og statistik (samme regler som oev.py) ----------
+// wpm = tegn/5 pr. minut, tiden fra første tast til sidste. Over flere tekster:
+// alle tegn delt med al tid, ikke gennemsnit af gennemsnit.
+function pad(n){ return String(n).padStart(2,'0'); }
+function datoISO(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function tidISO(d){ return `${datoISO(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+function wpmAf(ps){ const n=ps.reduce((a,p)=>a+p.n,0), sek=ps.reduce((a,p)=>a+p.sek,0); return sek?Math.round(n/5/(sek/60)):0; }
+function pctAf(ps){ const n=ps.reduce((a,p)=>a+p.n,0), f=ps.reduce((a,p)=>a+p.fejl,0); return n?Math.round(100*n/(n+f)):0; }
+function prDag(log){ const d={}; for(const p of log){ (d[p.t.slice(0,10)] ||= []).push(p); } return d; }
+function bedste(ps){ return Math.max(...ps.map(p=>p.wpm)); }
+function dagLinje(ps){ return `${ps.length} tekster · ${wpmAf(ps)} wpm · bedste ${bedste(ps)} · ${pctAf(ps)} % rigtige`; }
+function statistikLinjer(log, dage=14){
+  if(!log.length) return ['Ingen tekster logget endnu. Skriv en færdig, så begynder logbogen.'];
+  const smal = window.innerWidth < 560, barB = smal ? 12 : 30;
+  const dagene=prDag(log), noegler=Object.keys(dagene), alle=noegler.slice(-dage);
+  const top=Math.max(...alle.map(d=>wpmAf(dagene[d])))||1;
+  const L=(s,n)=>String(s).padEnd(n), R=(s,n)=>String(s).padStart(n);
+  const ud=[];
+  ud.push(smal ? `<b>${L('dag',7)}${R('tekster',7)}${R('wpm',5)}${R('rigtige',8)}  udvikling</b>`
+               : `<b>${L('dag',12)}${R('tekster',8)}${R('wpm',6)}${R('bedste',8)}${R('rigtige',9)}   udvikling</b>`);
+  for(const d of alle){
+    const ps=dagene[d], w=wpmAf(ps), bar='█'.repeat(Math.round(barB*w/top));
+    ud.push(smal ? `${L(d.slice(5),7)}${R(ps.length,7)}${R(w,5)}${R(pctAf(ps),6)} %  ${bar}`
+                 : `${L(d,12)}${R(ps.length,8)}${R(w,6)}${R(bedste(ps),8)}${R(pctAf(ps),8)} %   ${bar}`);
+  }
+  ud.push('');
+  ud.push(`I alt: ${log.length} tekster · ${wpmAf(log)} wpm · bedste ${bedste(log)} · ${pctAf(log)} %`+(smal?'':' rigtige'));
+  if(noegler.length>=2){
+    const f=noegler[0], s=noegler[noegler.length-1];
+    ud.push(smal ? `${f.slice(5)}: ${wpmAf(dagene[f])} wpm → ${s.slice(5)}: ${wpmAf(dagene[s])} wpm`
+                 : `Første dag ${f}: ${wpmAf(dagene[f])} wpm → seneste dag ${s}: ${wpmAf(dagene[s])} wpm`);
+  }
+  ud.push('', 'Sidste 10 tekster:');
+  for(const p of log.slice(-10).reverse()){
+    const t=p.t.slice(5,16).replace('T',' ');
+    ud.push(smal ? `  ${t} ${R(p.wpm,3)} wpm ${R(p.fejl,2)} fejl ${R(p.n,3)} tegn`+(p.bogst===false?' *':'')
+                 : `  ${t}  ${R(p.wpm,3)} wpm  ${R(p.fejl,2)} fejl  ${R(p.n,3)} tegn  ${R(p.sek.toFixed(1),5)} s`+(p.bogst===false?'  (med tegn og store bogstaver)':''));
+  }
+  return ud;
+}
+function visStatistik(til){
+  statVises=til;
+  $('stat').hidden=!til;
+  document.querySelector('.quote-wrap').hidden=til;
+  if(til){ $('hint').hidden=true; $('stat-tekst').innerHTML=statistikLinjer(gem.log).join('\n'); }
+  else render();
 }
 
 // ---------- Hint-brættet ----------
@@ -238,6 +305,15 @@ function tegnHint(){
 
 // ---------- Tastetryk ----------
 document.addEventListener('keydown', e=>{
+  if(statVises){ if(!['Control','Shift','Alt','Meta'].includes(e.key)){ e.preventDefault(); visStatistik(false); } return; }
+  // Ctrl-tasterne som i oev.py (bogstaverne er optaget af øvelsen)
+  if(e.ctrlKey && !e.metaKey && !e.altKey){
+    const k=e.key.toLowerCase();
+    if(k==='f'){ e.preventDefault(); opts.fejl.checked=!opts.fejl.checked; gemNu(); render(); return; }
+    if(k==='l'){ e.preventDefault(); opts.bogst.checked=!opts.bogst.checked; gemNu(); genstart(); return; }
+    if(k==='r'){ e.preventDefault(); nulstilFejl(); return; }
+    if(k==='s'){ e.preventDefault(); visStatistik(true); return; }
+  }
   if(e.ctrlKey||e.metaKey||e.altKey) return;
   if(e.key==='Tab'){ e.preventDefault(); opts.hint.checked=!opts.hint.checked; gemNu(); hintMidlertidig=false; tegnHint(); return; }
   if(e.key==='Escape'){ e.preventDefault(); nyTekst(); return; }
@@ -253,7 +329,12 @@ document.addEventListener('keydown', e=>{
   if(ok){
     pos++;
     hintMidlertidig=false;
-    if(pos>=tekst.length){ faerdig=true; gem.antal++; gemNu(); }
+    if(pos>=tekst.length){
+      faerdig=true; gem.antal++; slut=Date.now();
+      const sek=Math.max(0.1,(slut-start)/1000), n=tekst.length;
+      sidste={t:tidISO(new Date()), n, sek:Math.round(sek*10)/10, fejl:fejlHer, wpm:Math.round(n/5/(sek/60)), bogst:opts.bogst.checked};
+      gem.log.push(sidste); gemNu();
+    }
   } else {
     fejlHer++;
     const k=maal.toLowerCase(); gem.fejl[k]=(gem.fejl[k]||0)+1;
@@ -263,7 +344,11 @@ document.addEventListener('keydown', e=>{
   render();
 });
 Object.values(opts).forEach(o=>o.addEventListener('change',()=>{ gemNu(); if(o===opts.bogst){ genstart(); } render(); o.blur(); }));
-$('reset').addEventListener('click',()=>{ gem.fejl={}; gem.antal=0; gemNu(); render(); $('reset').blur(); });
+// ^R nulstiller kun fejltal pr. tast; logbogen og tælleren bliver (som i oev.py)
+function nulstilFejl(){ gem.fejl={}; gemNu(); render(); }
+$('reset').addEventListener('click',()=>{ nulstilFejl(); $('reset').blur(); });
+$('vis-stat').addEventListener('click',e=>{ e.stopPropagation(); visStatistik(true); $('vis-stat').blur(); });
+document.addEventListener('click',e=>{ if(statVises && !e.target.closest('#vis-stat')) visStatistik(false); });
 
 bygBraet();
 nyTekst();
