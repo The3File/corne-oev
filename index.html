@@ -1,0 +1,270 @@
+<meta charset="utf-8">
+<title>Corne-øvelsen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#f4f2ec; --paper:#ffffff; --ink:#1d2024; --ink-2:#5c6169; --ink-3:#9a9fa6;
+  --line:#dcd8cf; --key:#ffffff; --key-edge:#cfcbc2; --key-shadow:rgba(40,36,28,.14);
+  --accent:#2e8b8b; --accent-ink:#1d6666; --hold:#b7791f; --hold-bg:#fbf1dd;
+  --layer-bg:#e6f1f0; --heat:#b04a2a; --wrong:#c4432b; --wrong-bg:#f7e3de;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#15171b; --paper:#1d2025; --ink:#e7e5df; --ink-2:#a3a7ae; --ink-3:#6e737b;
+    --line:#2c3037; --key:#252930; --key-edge:#3a3f48; --key-shadow:rgba(0,0,0,.45);
+    --accent:#5fb8b8; --accent-ink:#8fd0d0; --hold:#e0a54a; --hold-bg:#33291a;
+    --layer-bg:#1b2a2a; --heat:#e0714a; --wrong:#e0714a; --wrong-bg:#3a2320;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#15171b; --paper:#1d2025; --ink:#e7e5df; --ink-2:#a3a7ae; --ink-3:#6e737b;
+  --line:#2c3037; --key:#252930; --key-edge:#3a3f48; --key-shadow:rgba(0,0,0,.45);
+  --accent:#5fb8b8; --accent-ink:#8fd0d0; --hold:#e0a54a; --hold-bg:#33291a;
+  --layer-bg:#1b2a2a; --heat:#e0714a; --wrong:#e0714a; --wrong-bg:#3a2320;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:15px;line-height:1.5}
+main{max-width:960px;margin:0 auto;padding:28px 24px 40px;min-height:100%;display:flex;flex-direction:column;gap:22px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.opts{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.opts label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.opts input{accent-color:var(--accent)}
+.opts kbd{font-family:"IBM Plex Mono",monospace;font-size:11px;border:1px solid var(--line);border-radius:3px;padding:0 4px;color:var(--ink-3)}
+.quote-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:6px 0}
+.author{color:var(--ink-3);font-size:14px}
+.quote{font-family:"IBM Plex Mono",monospace;font-size:clamp(20px,2.6vw,28px);line-height:1.7;white-space:pre-wrap;word-break:break-word;letter-spacing:.01em;text-wrap:pretty}
+.quote span{color:var(--ink-3);border-radius:3px}
+.quote span.ok{color:var(--ink)}
+.quote span.cur{color:var(--ink);background:var(--layer-bg);box-shadow:inset 0 -2px 0 var(--accent)}
+.quote span.cur.shake{background:var(--wrong-bg);box-shadow:inset 0 -2px 0 var(--wrong);animation:shake .18s}
+@keyframes shake{25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+.status{display:flex;gap:22px;align-items:baseline;flex-wrap:wrap;font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-3);min-height:20px}
+.status b{color:var(--ink);font-weight:500}
+.status .done{color:var(--accent-ink)}
+/* hint */
+.hint{display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 0 4px;border-top:1px solid var(--line)}
+.hint[hidden]{display:none}
+.hint .cap{font-size:13px;color:var(--ink-2);min-height:20px}
+.hint .cap b{color:var(--accent-ink);font-weight:500}
+.board-wrap{overflow-x:auto;width:100%;padding:4px 0 8px}
+.board{display:flex;justify-content:center;gap:40px;min-width:640px}
+.half{display:flex;flex-direction:column}
+.hand{display:grid;grid-template-columns:repeat(6,46px);grid-template-rows:repeat(3,46px);gap:5px}
+.key{position:relative;background:var(--key);border:1px solid var(--key-edge);border-radius:6px;box-shadow:0 2px 0 var(--key-shadow);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:16px;font-weight:500;color:var(--ink);transform:translateY(var(--st,0px));transition:background .12s,border-color .12s}
+.key.small{font-size:10px;line-height:1.1;text-align:center;padding:3px}
+.key.outer{background:var(--ground)}
+.key.blank{background:transparent;border-style:dashed;box-shadow:none}
+.key.layer{background:var(--layer-bg);border-color:var(--accent);color:var(--accent-ink)}
+.key.hit{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;box-shadow:0 2px 0 var(--accent-ink)}
+.key.hit2{background:var(--hold-bg);border-color:var(--hold);color:var(--hold)}
+.key.dim{opacity:.35}
+.thumbs{display:flex;gap:5px;margin-top:10px}
+.thumbs.left{justify-content:flex-end}
+.thumbs.right{justify-content:flex-start}
+.thumbs .key{width:46px;height:46px}
+.thumbs.left .key:nth-child(3){transform:rotate(12deg) translateY(5px)}
+.thumbs.right .key:nth-child(1){transform:rotate(-12deg) translateY(5px)}
+.foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-3);border-top:1px solid var(--line);padding-top:12px}
+.foot b{color:var(--ink-2);font-weight:500}
+.foot button{background:none;border:1px solid var(--line);color:var(--ink-3);border-radius:4px;padding:2px 8px;font:inherit;font-size:12px;cursor:pointer}
+.foot button:hover{color:var(--ink)}
+</style>
+
+<main>
+  <div class="top">
+    <div class="eyebrow">Corne · øvelse</div>
+    <div class="opts">
+      <label><input type="checkbox" id="o-hint"> Hint <kbd>Tab</kbd></label>
+      <label><input type="checkbox" id="o-fejl"> Hint ved fejl</label>
+      <label><input type="checkbox" id="o-bogst"> Kun bogstaver</label>
+    </div>
+  </div>
+
+  <div class="quote-wrap">
+    <div class="author" id="author"></div>
+    <div class="quote" id="quote"></div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="hint" id="hint" hidden>
+    <div class="board-wrap"><div class="board" id="board"></div></div>
+    <div class="cap" id="cap"></div>
+  </div>
+
+  <div class="foot">
+    <div id="stats"></div>
+    <div><span id="count"></span> · <kbd>Esc</kbd> ny tekst · <button id="reset">nulstil tal</button></div>
+  </div>
+</main>
+
+<script src="citater.js"></script>
+<script>
+// Citaterne ligger i citater.js (delt med oev.py).
+
+// ---------- Layoutet (filip-1) tegnet på Cornen. Kolonner yderst → inderst pr. hånd ----------
+// Blokken: 3 rækker x 5 kolonner pr. hånd. Skrevet venstre → højre som man læser.
+const BLOK = ['wlvgb','æoyfu', 'rntdp','åiesh', 'cjmkq','øa-,.'];
+// Lagene, til hint når tegnet ikke er i blokken (samme pladser, holdt tommel).
+// SYM = hold højre tommel yderst (højre hånd); NAV = hold Space (venstre hånd).
+const SYM_H = ['$?#!@', ':*()"', "%/'_;"];
+const NAV_L = ['~^&|\\', '{}<>=', '`[]+ '];
+
+// Ydre kolonne og tommelfingre, som firmwaren har dem (flashet 10/9-2026).
+const YDRE = { L:['Tab','Esc','Ctrl'], R:[null,'x','z'], LT:['Shift','WM','Enter'], RT:['Space','Bksp','SYM'] };
+const STAGGER = [22,22,4,0,6,12]; // px pr. kolonne, yderst → inderst
+const FINGER = ['lillefinger','lillefinger','ringfinger','langfinger','pegefinger','pegefinger'];
+
+// ---------- Tilstand ----------
+const $ = id=>document.getElementById(id);
+const opts = {hint:$('o-hint'), fejl:$('o-fejl'), bogst:$('o-bogst')};
+let gem = {};
+try{ gem = JSON.parse(localStorage.getItem('corne-oev')||'{}'); }catch(e){ gem={}; }
+gem.fejl = gem.fejl||{}; gem.antal = gem.antal||0;
+// standard: kun bogstaver til, hint fra
+opts.hint.checked   = gem.oHint ?? false;
+opts.fejl.checked   = gem.oFejl ?? false;
+opts.bogst.checked  = gem.oBogst ?? true;
+function gemNu(){
+  gem.oHint=opts.hint.checked; gem.oFejl=opts.fejl.checked; gem.oBogst=opts.bogst.checked;
+  try{ localStorage.setItem('corne-oev', JSON.stringify(gem)); }catch(e){}
+}
+
+let bunke=[], aktuel=null, tekst='', pos=0, fejlHer=0, start=null, faerdig=false, hintMidlertidig=false;
+
+function normaliser(s){
+  s = s.replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[–—]/g,'-').replace(/…/g,'...');
+  if(!opts.bogst.checked) return s;
+  s = s.toLowerCase().replace(/'/g,'').replace(/[?!;:]/g,'.').replace(/["()]/g,'');
+  s = s.replace(/[^a-zæøå ,.\-]/g,'').replace(/\s+/g,' ').trim();
+  return s;
+}
+function nyTekst(){
+  if(!bunke.length){ bunke = CITATER.slice(); for(let i=bunke.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [bunke[i],bunke[j]]=[bunke[j],bunke[i]]; } }
+  aktuel = bunke.pop();
+  genstart();
+}
+function genstart(){ // samme citat forfra (når "kun bogstaver" skifter, normaliseres teksten om)
+  tekst = normaliser(aktuel[1]);
+  pos=0; fejlHer=0; start=null; faerdig=false; hintMidlertidig=false;
+  $('author').textContent = aktuel[0];
+  const q=$('quote'); q.innerHTML='';
+  for(const ch of tekst){ const s=document.createElement('span'); s.textContent=ch; q.appendChild(s); }
+  render();
+}
+function render(){
+  const spans=$('quote').children;
+  for(let i=0;i<spans.length;i++){ spans[i].className = i<pos?'ok':(i===pos?'cur':''); }
+  const st=$('status');
+  if(faerdig){
+    const sek=Math.round((Date.now()-start)/1000);
+    const rigtig=tekst.length, pct=Math.round(100*rigtig/(rigtig+fejlHer));
+    st.innerHTML=`<span class="done">færdig</span><span><b>${pct} %</b> rigtige</span><span><b>${fejlHer}</b> fejl</span><span><b>${sek}</b> sek</span><span>Enter = næste</span>`;
+  } else {
+    st.innerHTML=`<span><b>${pos}</b> / ${tekst.length}</span><span><b>${fejlHer}</b> fejl</span>`;
+  }
+  $('count').textContent = gem.antal+' tekster i alt';
+  visStats();
+  tegnHint();
+}
+function visStats(){
+  const top=Object.entries(gem.fejl).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  $('stats').innerHTML = top.length ? 'Sværest for dig: '+top.map(([k,v])=>`<b>${k===' '?'mellemrum':k}</b> ${v}`).join(' · ') : 'Fejlene pr. tast samles her.';
+}
+
+// ---------- Hint-brættet ----------
+function key(txt, col, cls){
+  const el=document.createElement('div'); el.className='key '+(cls||'');
+  el.style.setProperty('--st', STAGGER[col]+'px');
+  if(txt==null){ el.classList.add('blank'); return el; }
+  if(txt.length>1) el.classList.add('small');
+  el.textContent=txt; return el;
+}
+function bygBraet(){
+  const b=$('board'); b.innerHTML='';
+  const y = YDRE;
+  const sider=[['L',0],['R',1]];
+  sider.forEach(([side,bi])=>{
+    const half=document.createElement('div'); half.className='half';
+    const hand=document.createElement('div'); hand.className='hand';
+    for(let r=0;r<3;r++){
+      const rk=BLOK[r*2+bi];
+      const cells=[];
+      for(let c=0;c<5;c++){ const k=key(rk[c], side==='L'?c+1:5-c); k.dataset.p=`${r}${bi}${c}`; cells.push(k); }
+      const outer=key(y[side][r], 0, 'outer'); outer.dataset.p=`y${side}${r}`;
+      if(side==='L'){ hand.appendChild(outer); cells.forEach(k=>hand.appendChild(k)); }
+      else { cells.forEach(k=>hand.appendChild(k)); hand.appendChild(outer); }
+    }
+    half.appendChild(hand);
+    const t=document.createElement('div'); t.className='thumbs '+(side==='L'?'left':'right');
+    y[side+'T'].forEach((txt,i)=>{ const k=key(txt,5,/^(WM|SYM)$/.test(txt)?'layer':''); k.style.setProperty('--st','0px'); k.dataset.p=`t${side}${i}`; t.appendChild(k); });
+    half.appendChild(t);
+    b.appendChild(half);
+  });
+}
+function findTegn(ch){
+  const lc=ch.toLowerCase();
+  for(let i=0;i<6;i++){ const j=BLOK[i].indexOf(lc); if(j>=0) return {p:`${Math.floor(i/2)}${i%2}${j}`, side:i%2, col:j, sym:false}; }
+  for(let r=0;r<3;r++){ const j=SYM_H[r].indexOf(ch); if(j>=0) return {p:`${r}1${j}`, side:1, col:j, lag:'SYM'}; }
+  for(let r=0;r<3;r++){ const j=NAV_L[r].indexOf(ch); if(j>=0&&ch!==' ') return {p:`${r}0${j}`, side:0, col:j, lag:'NAV'}; }
+  return null;
+}
+function tegnHint(){
+  const vis = opts.hint.checked || hintMidlertidig;
+  $('hint').hidden = !vis;
+  if(!vis) return;
+  document.querySelectorAll('#board .key').forEach(k=>{ k.classList.remove('hit','hit2'); if(k.dataset.orig!==undefined){ k.textContent=k.dataset.orig; delete k.dataset.orig; } });
+  const cap=$('cap');
+  if(faerdig){ cap.textContent=''; return; }
+  const ch=tekst[pos];
+  const mark=(p,c,label)=>{ const el=document.querySelector(`#board .key[data-p="${p}"]`); if(!el) return; el.classList.add(c||'hit'); if(label){ el.dataset.orig=el.textContent; el.textContent=label; } };
+  let txt='';
+  if(ch===' '){ mark('tR0'); txt='højre tommel · <b>mellemrum</b>'; }
+  else {
+    const f=findTegn(ch);
+    if(!f){ txt='<b>'+ch+'</b> findes ikke på brættet'; }
+    else {
+      mark(f.p,'hit',f.lag?ch:null);
+      const haand = f.side===0?'venstre':'højre';
+      txt = `${haand} ${FINGER[f.col+1]} · <b>${ch}</b>`;
+      if(f.lag==='SYM'){ mark('tR2','hit2'); txt += ' · hold SYM (højre tommel, yderst)'; }
+      else if(f.lag==='NAV'){ mark('tR0','hit2'); txt += ' · hold Space'; }
+      else if(ch!==ch.toLowerCase()){ mark('tL0','hit2'); txt += ' · med Shift'; }
+    }
+  }
+  cap.innerHTML=txt;
+}
+
+// ---------- Tastetryk ----------
+document.addEventListener('keydown', e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(e.key==='Tab'){ e.preventDefault(); opts.hint.checked=!opts.hint.checked; gemNu(); hintMidlertidig=false; tegnHint(); return; }
+  if(e.key==='Escape'){ e.preventDefault(); nyTekst(); return; }
+  if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON') return;
+  if(faerdig){ if(e.key==='Enter'){ e.preventDefault(); nyTekst(); } return; }
+  if(e.key==='Backspace'){ e.preventDefault(); if(pos>0) pos--; render(); return; }
+  if(e.key.length!==1) return;
+  const ch=e.key;
+  e.preventDefault();
+  if(start===null) start=Date.now();
+  const maal=tekst[pos];
+  const ok = opts.bogst.checked ? ch.toLowerCase()===maal.toLowerCase() : ch===maal;
+  if(ok){
+    pos++;
+    hintMidlertidig=false;
+    if(pos>=tekst.length){ faerdig=true; gem.antal++; gemNu(); }
+  } else {
+    fejlHer++;
+    const k=maal.toLowerCase(); gem.fejl[k]=(gem.fejl[k]||0)+1;
+    const cur=$('quote').children[pos]; cur.classList.remove('shake'); void cur.offsetWidth; cur.classList.add('shake');
+    if(opts.fejl.checked) hintMidlertidig=true;
+  }
+  render();
+});
+Object.values(opts).forEach(o=>o.addEventListener('change',()=>{ gemNu(); if(o===opts.bogst){ genstart(); } render(); o.blur(); }));
+$('reset').addEventListener('click',()=>{ gem.fejl={}; gem.antal=0; gemNu(); render(); $('reset').blur(); });
+
+bygBraet();
+nyTekst();
+</script>
